@@ -24,6 +24,7 @@ def main():
         if new_task_count <= task_count:
             send_mail('no new task')
             break
+        task_count = new_task_count
 
         print('sleeping')
         time.sleep(5 * 60)
@@ -56,4 +57,4 @@ Subject: Celery Alert!
 
 if __name__ == "__main__":
     send_mail('test')
-    main()
+    #main()
