@@ -8,26 +8,31 @@ load_dotenv()
 def main():
     task_count = 0
     while True:
-        res = requests.get('http://remote.mediatain.com:5566/healthcheck')
-        if not res.ok:
-            send_mail('healthcheck down')
-            break
+        try:
+            res = requests.get('http://remote.mediatain.com:5566/healthcheck')
+            if not res.ok:
+                send_mail('healthcheck down')
+                break
 
-        res = requests.get('http://remote.mediatain.com:5566/metrics')
-        if not res.ok:
-            send_mail('metrics down')
-            break
-        
-        data = res.text
-        new_task_count = int(float(data.split('flower_task_runtime_seconds_bucket{le="+Inf",task="tasks.load_contracts_and_schedule_captures",worker="default-worker@')[1].split('\n')[0].split(' ')[-1]))
+            res = requests.get('http://remote.mediatain.com:5566/metrics')
+            if not res.ok:
+                send_mail('metrics down')
+                break
+            
+            data = res.text
+            new_task_count = int(float(data.split('flower_task_runtime_seconds_bucket{le="+Inf",task="tasks.load_contracts_and_schedule_captures",worker="default-worker@')[1].split('\n')[0].split(' ')[-1]))
 
-        if new_task_count <= task_count:
-            send_mail('no new task')
-            break
-        task_count = new_task_count
+            if new_task_count <= task_count:
+                send_mail('no new task')
+                break
+            task_count = new_task_count
 
-        print('sleeping')
-        time.sleep(5 * 60)
+            print('sleeping')
+            time.sleep(5 * 60)
+        except Exception as e:
+            send_mail('something crashed')
+            print(e)
+            break
         
 
 def send_mail(content):
