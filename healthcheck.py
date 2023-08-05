@@ -33,6 +33,7 @@ def main():
             send_mail('something crashed')
             print(e)
             break
+
         
 
 def send_mail(content):
@@ -62,4 +63,6 @@ Subject: Celery Alert!
 
 if __name__ == "__main__":
     send_mail('test')
-    #main()
+    main()
+    while True:
+        pass
