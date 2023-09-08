@@ -64,5 +64,5 @@ Subject: Celery Alert!
 if __name__ == "__main__":
     send_mail('test')
     main()
-    while True:
-        pass
+    while(True):
+        time.sleep(24 * 60 * 60)
