@@ -20,7 +20,7 @@ def main():
                 break
             
             data = res.text
-            new_task_count = int(float(data.split('flower_task_runtime_seconds_bucket{le="+Inf",task="tasks.load_contracts_and_schedule_captures",worker="default-worker@')[1].split('\n')[0].split(' ')[-1]))
+            new_task_count = int(float(data.split('flower_task_runtime_seconds_bucket{le="+Inf",task="tasks.load_contracts_and_schedule_captures",worker="scheduler-worker@')[1].split('\n')[0].split(' ')[-1]))
 
             if new_task_count <= task_count:
                 send_mail('no new task')
