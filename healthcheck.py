@@ -39,6 +39,7 @@ def main():
                 send_mail('healthcheck failed', str(e))
             print(e)
             crashed = True
+            sleep_mins(5)
             continue
 
         if crashed:
