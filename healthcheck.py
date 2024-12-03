@@ -39,6 +39,7 @@ def main():
                 send_mail('healthcheck failed', str(e))
             print(e)
             crashed = True
+            continue
 
         if crashed:
             send_mail('healthcheck recovered')
