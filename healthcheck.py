@@ -5,38 +5,50 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+class HealthCheckException(Exception):
+    pass
+
+def sleep_mins(t):
+    print(f'sleeping {t} minutes')
+    time.sleep(t * 60)
+
 def main():
     task_count = 0
+    send_mail('starting healthcheck task...')
+    crashed = False
     while True:
         try:
-            res = requests.get('http://remote.mediatain.com:5566/healthcheck')
-            if not res.ok:
-                send_mail('healthcheck down')
-                break
-
-            res = requests.get('http://remote.mediatain.com:5566/metrics')
-            if not res.ok:
-                send_mail('metrics down')
-                break
+            try:
+                res = requests.get('http://remote.mediatain.com:5566/healthcheck')
+                res.raise_for_status()
+                res = requests.get('http://remote.mediatain.com:5566/metrics')
+                res.raise_for_status()
+            except:
+                raise HealthCheckException('healthcheck/metrics down')
             
             data = res.text
             new_task_count = int(float(data.split('flower_task_runtime_seconds_bucket{le="+Inf",task="tasks.load_contracts_and_schedule_captures",worker="scheduler-worker@')[1].split('\n')[0].split(' ')[-1]))
 
             if new_task_count <= task_count:
-                send_mail('no new task')
-                break
+                raise HealthCheckException('no new task')
             task_count = new_task_count
 
-            print('sleeping')
-            time.sleep(5 * 60)
         except Exception as e:
-            send_mail('something crashed')
+            if not crashed:
+                send_mail('healthcheck failed', str(e))
             print(e)
-            break
+            crashed = True
+
+        if crashed:
+            send_mail('healthcheck recovered')
+            crashed = False
+
+        sleep_mins(5)
 
         
 
-def send_mail(content):
+def send_mail(content, detail=''):
     import smtplib, ssl
     port = 587  # For SSL
     smtp_server = os.environ.get("SMTP_SERVER")
@@ -50,6 +62,7 @@ Content-type: text/html
 Subject: Celery Alert!
 
 <h1>{content}</h1>
+<p>{detail}</p>
 """
 
     context = ssl.create_default_context()
@@ -62,7 +75,4 @@ Subject: Celery Alert!
 
 
 if __name__ == "__main__":
-    send_mail('test')
     main()
-    while(True):
-        time.sleep(24 * 60 * 60)
