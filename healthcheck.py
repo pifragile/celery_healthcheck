@@ -5,7 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
+# http://remote.mediatain.com:5566/api/tasks?queue=scheduler&limit=1
+# http://remote.mediatain.com:5566/api/queues/length
+# use basic auth
+# signal success: https://hc-ping.com/d4e3366c-9a3d-44d4-82aa-5b85aa49e1ac
+# signal failure
+# https://hc-ping.com/d4e3366c-9a3d-44d4-82aa-5b85aa49e1ac/ERROR_CODE
 class HealthCheckException(Exception):
     pass
 
@@ -14,39 +19,46 @@ def sleep_mins(t):
     time.sleep(t * 60)
 
 def main():
-    task_count = 0
-    send_mail('starting healthcheck task...')
+    last_task_id = None
     crashed = False
+    auth = (os.environ.get("FLOWER_USER"), os.environ.get("FLOWER_PASS"))
     while True:
         try:
             try:
                 res = requests.get('http://remote.mediatain.com:5566/healthcheck')
                 res.raise_for_status()
-                res = requests.get('http://remote.mediatain.com:5566/metrics')
-                res.raise_for_status()
+                tasks = requests.get('http://remote.mediatain.com:5566/api/tasks?queue=scheduler&limit=1', auth=auth)
+                tasks.raise_for_status()
+                queues = requests.get('http://remote.mediatain.com:5566/api/queues/length', auth=auth)
+                queues.raise_for_status()
             except:
-                raise HealthCheckException('healthcheck/metrics down')
+                raise HealthCheckException('1')
             
-            data = res.text
-            new_task_count = int(float(data.split('flower_task_runtime_seconds_bucket{le="+Inf",task="tasks.load_contracts_and_schedule_captures",worker="scheduler-worker@')[1].split('\n')[0].split(' ')[-1]))
+            retrieved_task_ids = list(tasks.json().keys())
+            if len(retrieved_task_ids) == 0 or retrieved_task_ids[0] == last_task_id:
+                raise HealthCheckException('2')
+            last_task_id = retrieved_task_ids[0]
 
-            if new_task_count <= task_count:
-                raise HealthCheckException('no new task')
-            task_count = new_task_count
 
+            active_queues = queues.json()['active_queues']
+            for q in active_queues:
+                if q['messages'] > 100:
+                        raise HealthCheckException('3')
+
+            requests.get('https://hc-ping.com/d4e3366c-9a3d-44d4-82aa-5b85aa49e1ac')
         except Exception as e:
             if not crashed:
-                send_mail('healthcheck failed', str(e))
+                requests.get(f'https://hc-ping.com/d4e3366c-9a3d-44d4-82aa-5b85aa49e1ac/{str(e)}')
             print(e)
             crashed = True
             sleep_mins(5)
             continue
 
         if crashed:
-            send_mail('healthcheck recovered')
+            requests.get('https://hc-ping.com/d4e3366c-9a3d-44d4-82aa-5b85aa49e1ac')
             crashed = False
 
-        sleep_mins(5)
+        sleep_mins(1)
 
         
 
