@@ -22,16 +22,28 @@ def main():
     last_task_id = None
     crashed = False
     auth = (os.environ.get("FLOWER_USER"), os.environ.get("FLOWER_PASS"))
+    res = None
+    tasks = None
+    queues = None
     while True:
         try:
             try:
-                res = requests.get('http://remote.mediatain.com:5566/healthcheck')
-                res.raise_for_status()
-                tasks = requests.get('http://remote.mediatain.com:5566/api/tasks?queue=scheduler&limit=1', auth=auth)
-                tasks.raise_for_status()
-                queues = requests.get('http://remote.mediatain.com:5566/api/queues/length', auth=auth)
-                queues.raise_for_status()
-            except:
+                for i in range(3):
+                    try:
+                        res = requests.get('http://remote.mediatain.com:5566/healthcheck')
+                        res.raise_for_status()
+                        tasks = requests.get('http://remote.mediatain.com:5566/api/tasks?queue=scheduler&limit=1', auth=auth)
+                        tasks.raise_for_status()
+                        queues = requests.get('http://remote.mediatain.com:5566/api/queues/length', auth=auth)
+                        queues.raise_for_status()
+                        break
+                    except Exception as e:
+                        if i == 2:
+                            raise e
+                        time.sleep(5)
+
+            except Exception as e:
+                print(e, flush=True)
                 raise HealthCheckException('1')
             
             retrieved_task_ids = list(tasks.json().keys())
